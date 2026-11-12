@@ -1,0 +1,246 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reusable Hardened Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // 1. RemoteSession Validation Helper
+    function isValidRemoteSession(data) {
+      return data.sessionCode is string && data.sessionCode.size() >= 6 && data.sessionCode.size() <= 32 &&
+             data.accessPin is string && data.accessPin.size() >= 4 && data.accessPin.size() <= 12 &&
+             data.hostUserId is string && data.hostUserId.size() >= 1 && data.hostUserId.size() <= 128 &&
+             data.hostDeviceName is string && data.hostDeviceName.size() >= 1 && data.hostDeviceName.size() <= 120 &&
+             data.controllerUserId is string && data.controllerUserId.size() <= 128 &&
+             data.controllerDeviceName is string && data.controllerDeviceName.size() <= 120 &&
+             data.status is string && data.status in ['WAITING', 'ACTIVE', 'PAUSED', 'ENDED'] &&
+             data.latestFrameBase64 is string && data.latestFrameBase64.size() <= 450000 &&
+             data.frameWidth is int && data.frameWidth >= 0 && data.frameWidth <= 4000 &&
+             data.frameHeight is int && data.frameHeight >= 0 && data.frameHeight <= 4000 &&
+             data.frameSeq is int && data.frameSeq >= 0 &&
+             data.batteryLevel is int && data.batteryLevel >= 0 && data.batteryLevel <= 100 &&
+             data.isCharging is bool &&
+             data.networkType is string && data.networkType.size() >= 1 && data.networkType.size() <= 60 &&
+             data.ramUsageMb is int && data.ramUsageMb >= 0 &&
+             data.ramTotalMb is int && data.ramTotalMb >= 0 &&
+             data.storageFreeGb is int && data.storageFreeGb >= 0 &&
+             data.activeAppName is string && data.activeAppName.size() <= 150 &&
+             data.torchEnabled is bool &&
+             data.accessibilityEnabled is bool &&
+             data.screenCaptureEnabled is bool &&
+             data.clipboardText is string && data.clipboardText.size() <= 2000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // 2. RemoteCommand Validation Helper
+    function isValidRemoteCommand(data) {
+      return data.sessionId is string && data.sessionId.size() >= 1 && data.sessionId.size() <= 128 &&
+             data.hostUserId is string && data.hostUserId.size() >= 1 && data.hostUserId.size() <= 128 &&
+             data.senderUserId is string && data.senderUserId.size() >= 1 && data.senderUserId.size() <= 128 &&
+             data.type is string && data.type in [
+               'TAP', 'SWIPE', 'LONG_PRESS',
+               'GLOBAL_BACK', 'GLOBAL_HOME', 'GLOBAL_RECENTS', 'GLOBAL_NOTIFICATIONS', 'GLOBAL_LOCK',
+               'TOGGLE_TORCH', 'RING_DEVICE', 'SET_CLIPBOARD', 'POINTER_MARK', 'CHAT_MESSAGE', 'LAUNCH_APP'
+             ] &&
+             data.xPermille is int && data.xPermille >= 0 && data.xPermille <= 1000 &&
+             data.yPermille is int && data.yPermille >= 0 && data.yPermille <= 1000 &&
+             data.endXPermille is int && data.endXPermille >= 0 && data.endXPermille <= 1000 &&
+             data.endYPermille is int && data.endYPermille >= 0 && data.endYPermille <= 1000 &&
+             data.durationMs is int && data.durationMs >= 10 && data.durationMs <= 5000 &&
+             data.payload is string && data.payload.size() <= 1000 &&
+             data.executed is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // 3. SavedDevice Validation Helper
+    function isValidSavedDevice(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.sessionCode is string && data.sessionCode.size() >= 6 && data.sessionCode.size() <= 32 &&
+             data.deviceName is string && data.deviceName.size() >= 1 && data.deviceName.size() <= 120 &&
+             data.accessPin is string && data.accessPin.size() <= 12 &&
+             data.lastRole is string && data.lastRole in ['HOST', 'CONTROLLER'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // Collection 1: /remote_sessions/{sessionId}
+    match /remote_sessions/{sessionId} {
+      // Any authenticated user who knows the exact sessionId can fetch it to pair, or if they are host/controller
+      allow get: if isSignedIn() && isValidId(sessionId);
+
+      // List queries must be filtered by hostUserId or controllerUserId matching the caller
+      allow list: if isSignedIn() && (
+        resource.data.hostUserId == request.auth.uid ||
+        resource.data.controllerUserId == request.auth.uid
+      );
+
+      allow create: if isSignedIn() &&
+                       isValidId(sessionId) &&
+                       incoming().hostUserId == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'sessionCode', 'accessPin', 'hostUserId', 'hostDeviceName',
+                         'controllerUserId', 'controllerDeviceName', 'status',
+                         'latestFrameBase64', 'frameWidth', 'frameHeight', 'frameSeq',
+                         'batteryLevel', 'isCharging', 'networkType', 'ramUsageMb',
+                         'ramTotalMb', 'storageFreeGb', 'activeAppName', 'torchEnabled',
+                         'accessibilityEnabled', 'screenCaptureEnabled', 'clipboardText',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'sessionCode', 'accessPin', 'hostUserId', 'hostDeviceName',
+                         'controllerUserId', 'controllerDeviceName', 'status',
+                         'latestFrameBase64', 'frameWidth', 'frameHeight', 'frameSeq',
+                         'batteryLevel', 'isCharging', 'networkType', 'ramUsageMb',
+                         'ramTotalMb', 'storageFreeGb', 'activeAppName', 'torchEnabled',
+                         'accessibilityEnabled', 'screenCaptureEnabled', 'clipboardText',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidRemoteSession(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(sessionId) &&
+                       isValidRemoteSession(incoming()) &&
+                       existing().status != 'ENDED' &&
+                       incoming().hostUserId == existing().hostUserId &&
+                       incoming().sessionCode == existing().sessionCode &&
+                       incoming().accessPin == existing().accessPin &&
+                       incoming().createdAt == existing().createdAt && (
+                         // Action 1: Host updates screen frame, telemetry, status, or clipboard
+                         (existing().hostUserId == request.auth.uid &&
+                          incoming().diff(existing()).affectedKeys().hasOnly([
+                            'hostDeviceName', 'controllerUserId', 'controllerDeviceName', 'status',
+                            'latestFrameBase64', 'frameWidth', 'frameHeight', 'frameSeq',
+                            'batteryLevel', 'isCharging', 'networkType', 'ramUsageMb',
+                            'ramTotalMb', 'storageFreeGb', 'activeAppName', 'torchEnabled',
+                            'accessibilityEnabled', 'screenCaptureEnabled', 'clipboardText',
+                            'updatedAt'
+                          ])) ||
+                         // Action 2: Controller joins, pauses/resumes/ends, or syncs clipboard
+                         ((existing().controllerUserId == '' || existing().controllerUserId == request.auth.uid) &&
+                          (incoming().controllerUserId == request.auth.uid || incoming().controllerUserId == '') &&
+                          incoming().diff(existing()).affectedKeys().hasOnly([
+                            'controllerUserId', 'controllerDeviceName', 'status',
+                            'clipboardText', 'updatedAt'
+                          ]))
+                       );
+
+      allow delete: if isSignedIn() &&
+                       isValidId(sessionId) &&
+                       existing().hostUserId == request.auth.uid;
+
+      // Subcollection: /remote_sessions/{sessionId}/commands/{commandId}
+      match /commands/{commandId} {
+        allow get: if isSignedIn() &&
+                      isValidId(sessionId) &&
+                      isValidId(commandId) && (
+                        existing().hostUserId == request.auth.uid ||
+                        existing().senderUserId == request.auth.uid
+                      );
+
+        allow list: if isSignedIn() && (
+                      resource.data.hostUserId == request.auth.uid ||
+                      resource.data.senderUserId == request.auth.uid
+                    );
+
+        allow create: if isSignedIn() &&
+                         isValidId(sessionId) &&
+                         isValidId(commandId) &&
+                         incoming().sessionId == sessionId &&
+                         incoming().senderUserId == request.auth.uid &&
+                         incoming().keys().hasAll([
+                           'sessionId', 'hostUserId', 'senderUserId', 'type',
+                           'xPermille', 'yPermille', 'endXPermille', 'endYPermille',
+                           'durationMs', 'payload', 'executed', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'sessionId', 'hostUserId', 'senderUserId', 'type',
+                           'xPermille', 'yPermille', 'endXPermille', 'endYPermille',
+                           'durationMs', 'payload', 'executed', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidRemoteCommand(incoming()) &&
+                         exists(/databases/$(database)/documents/remote_sessions/$(sessionId));
+
+        allow update: if isSignedIn() &&
+                         isValidId(sessionId) &&
+                         isValidId(commandId) &&
+                         isValidRemoteCommand(incoming()) &&
+                         (existing().hostUserId == request.auth.uid || existing().senderUserId == request.auth.uid) &&
+                         incoming().sessionId == existing().sessionId &&
+                         incoming().hostUserId == existing().hostUserId &&
+                         incoming().senderUserId == existing().senderUserId &&
+                         incoming().type == existing().type &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['executed', 'updatedAt']);
+
+        allow delete: if isSignedIn() &&
+                         isValidId(sessionId) &&
+                         isValidId(commandId) &&
+                         (existing().hostUserId == request.auth.uid || existing().senderUserId == request.auth.uid);
+      }
+    }
+
+    // Collection 2: /users/{userId}/saved_devices/{deviceId}
+    match /users/{userId}/saved_devices/{deviceId} {
+      allow get: if isSignedIn() &&
+                    isValidId(userId) &&
+                    isValidId(deviceId) &&
+                    request.auth.uid == userId;
+
+      allow list: if isSignedIn() &&
+                     request.auth.uid == userId;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidId(deviceId) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'userId', 'sessionCode', 'deviceName', 'accessPin',
+                         'lastRole', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'sessionCode', 'deviceName', 'accessPin',
+                         'lastRole', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidSavedDevice(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidId(deviceId) &&
+                       request.auth.uid == userId &&
+                       isValidSavedDevice(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().sessionCode == existing().sessionCode &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'deviceName', 'accessPin', 'lastRole', 'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidId(deviceId) &&
+                       request.auth.uid == userId;
+    }
+  }
+}

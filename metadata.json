@@ -1,0 +1,6 @@
+{
+  "name": "QuickLink Remote",
+  "description": "Two-phone live screen sharing, remote touch control, and real-time device diagnostics app",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

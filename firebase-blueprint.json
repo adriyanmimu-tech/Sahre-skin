@@ -1,0 +1,295 @@
+{
+  "entities": {
+    "RemoteSession": {
+      "title": "RemoteSession",
+      "description": "Represents a live screen-sharing and remote-control session between two Android phones.",
+      "type": "object",
+      "properties": {
+        "sessionCode": {
+          "type": "string",
+          "description": "Formatted 9-digit session code shared between the two phones."
+        },
+        "accessPin": {
+          "type": "string",
+          "description": "4-digit security PIN required to connect to the host phone."
+        },
+        "hostUserId": {
+          "type": "string",
+          "description": "Authenticated UID of the host phone user."
+        },
+        "hostDeviceName": {
+          "type": "string",
+          "description": "Model and OS name of the host phone being controlled."
+        },
+        "controllerUserId": {
+          "type": "string",
+          "description": "Authenticated UID of the controller phone user."
+        },
+        "controllerDeviceName": {
+          "type": "string",
+          "description": "Model name of the controller phone."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["WAITING", "ACTIVE", "PAUSED", "ENDED"],
+          "description": "Current lifecycle status of the remote control session."
+        },
+        "latestFrameBase64": {
+          "type": "string",
+          "description": "Base64-encoded compressed JPEG/WebP live screen frame from the host phone."
+        },
+        "frameWidth": {
+          "type": "integer",
+          "description": "Width in pixels of the captured screen frame."
+        },
+        "frameHeight": {
+          "type": "integer",
+          "description": "Height in pixels of the captured screen frame."
+        },
+        "frameSeq": {
+          "type": "integer",
+          "description": "Monotonically increasing frame sequence counter."
+        },
+        "batteryLevel": {
+          "type": "integer",
+          "description": "Host phone real-time battery percentage (0-100)."
+        },
+        "isCharging": {
+          "type": "boolean",
+          "description": "Whether the host phone is currently charging."
+        },
+        "networkType": {
+          "type": "string",
+          "description": "Host phone network connection type and signal info."
+        },
+        "ramUsageMb": {
+          "type": "integer",
+          "description": "Used RAM in MB on the host phone."
+        },
+        "ramTotalMb": {
+          "type": "integer",
+          "description": "Total RAM in MB on the host phone."
+        },
+        "storageFreeGb": {
+          "type": "integer",
+          "description": "Available internal storage in GB on the host phone."
+        },
+        "activeAppName": {
+          "type": "string",
+          "description": "Currently active foreground app or screen title on the host phone."
+        },
+        "torchEnabled": {
+          "type": "boolean",
+          "description": "Whether the host phone flashlight is currently on."
+        },
+        "accessibilityEnabled": {
+          "type": "boolean",
+          "description": "Whether the RemoteControlAccessibilityService is active on the host phone."
+        },
+        "screenCaptureEnabled": {
+          "type": "boolean",
+          "description": "Whether MediaProjection live screen capture is active on the host phone."
+        },
+        "clipboardText": {
+          "type": "string",
+          "description": "Shared clipboard text synced between host and controller phones."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the session was created (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the session was last updated (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "sessionCode",
+        "accessPin",
+        "hostUserId",
+        "hostDeviceName",
+        "controllerUserId",
+        "controllerDeviceName",
+        "status",
+        "latestFrameBase64",
+        "frameWidth",
+        "frameHeight",
+        "frameSeq",
+        "batteryLevel",
+        "isCharging",
+        "networkType",
+        "ramUsageMb",
+        "ramTotalMb",
+        "storageFreeGb",
+        "activeAppName",
+        "torchEnabled",
+        "accessibilityEnabled",
+        "screenCaptureEnabled",
+        "clipboardText",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "RemoteCommand": {
+      "title": "RemoteCommand",
+      "description": "A touch gesture, global navigation command, hardware toggle, or chat message sent from controller to host.",
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "description": "ID of the parent remote session."
+        },
+        "hostUserId": {
+          "type": "string",
+          "description": "Denormalized UID of the session host for fast local rule evaluation."
+        },
+        "senderUserId": {
+          "type": "string",
+          "description": "Authenticated UID of the user sending the command."
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "TAP",
+            "SWIPE",
+            "LONG_PRESS",
+            "GLOBAL_BACK",
+            "GLOBAL_HOME",
+            "GLOBAL_RECENTS",
+            "GLOBAL_NOTIFICATIONS",
+            "GLOBAL_LOCK",
+            "TOGGLE_TORCH",
+            "RING_DEVICE",
+            "SET_CLIPBOARD",
+            "POINTER_MARK",
+            "CHAT_MESSAGE",
+            "LAUNCH_APP"
+          ],
+          "description": "Command action type."
+        },
+        "xPermille": {
+          "type": "integer",
+          "description": "Normalized X coordinate in permille (0..1000)."
+        },
+        "yPermille": {
+          "type": "integer",
+          "description": "Normalized Y coordinate in permille (0..1000)."
+        },
+        "endXPermille": {
+          "type": "integer",
+          "description": "Normalized swipe end X coordinate in permille (0..1000)."
+        },
+        "endYPermille": {
+          "type": "integer",
+          "description": "Normalized swipe end Y coordinate in permille (0..1000)."
+        },
+        "durationMs": {
+          "type": "integer",
+          "description": "Gesture duration in milliseconds (10..5000)."
+        },
+        "payload": {
+          "type": "string",
+          "description": "Optional text payload for chat messages, clipboard sync, or package names."
+        },
+        "executed": {
+          "type": "boolean",
+          "description": "Whether the host device has executed this command."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when command was created (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when command was updated (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "sessionId",
+        "hostUserId",
+        "senderUserId",
+        "type",
+        "xPermille",
+        "yPermille",
+        "endXPermille",
+        "endYPermille",
+        "durationMs",
+        "payload",
+        "executed",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SavedDevice": {
+      "title": "SavedDevice",
+      "description": "A paired or recently connected phone saved in the user's quick-connect list.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated owner UID."
+        },
+        "sessionCode": {
+          "type": "string",
+          "description": "9-digit session ID of the paired phone."
+        },
+        "deviceName": {
+          "type": "string",
+          "description": "Friendly display name of the paired phone."
+        },
+        "accessPin": {
+          "type": "string",
+          "description": "Saved 4-digit PIN for quick reconnect."
+        },
+        "lastRole": {
+          "type": "string",
+          "enum": ["HOST", "CONTROLLER"],
+          "description": "Whether this phone was last used as Host or Controller."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when saved (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when updated (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "sessionCode",
+        "deviceName",
+        "accessPin",
+        "lastRole",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/remote_sessions/{sessionId}": {
+      "schema": {
+        "$ref": "#/entities/RemoteSession"
+      },
+      "description": "Active and historical live screen-sharing and remote-control sessions."
+    },
+    "/remote_sessions/{sessionId}/commands/{commandId}": {
+      "schema": {
+        "$ref": "#/entities/RemoteCommand"
+      },
+      "description": "Real-time queue of remote touch gestures, system navigation actions, and chat messages."
+    },
+    "/users/{userId}/saved_devices/{deviceId}": {
+      "schema": {
+        "$ref": "#/entities/SavedDevice"
+      },
+      "description": "User-scoped list of paired devices for quick one-tap reconnection."
+    }
+  }
+}

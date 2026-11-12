@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">QuickLink Remote</string>
+    <string name="accessibility_service_description">Allows QuickLink Remote to perform remote touch gestures, swipes, and system navigation (Home, Back, Recents) when you explicitly share your phone in Host Mode.</string>
+    <string name="accessibility_service_label">QuickLink Remote Touch Control</string>
+    <string name="auth_title">QuickLink Remote</string>
+    <string name="auth_subtitle">২টি মোবাইলের লাইভ স্ক্রিন শেয়ারিং, রিমোট টাচ কন্ট্রোল এবং রিয়েল-টাইম ডিভাইস মনিটর</string>
+    <string name="sign_in_google">Sign in with Google</string>
+    <string name="tab_host">এই ফোন শেয়ার (Host)</string>
+    <string name="tab_control">অন্য ফোন কন্ট্রোল (Control)</string>
+    <string name="tab_devices">সেভ করা ফোন (Devices)</string>
+</resources>
